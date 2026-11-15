@@ -1,0 +1,11 @@
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+const manifest=JSON.parse(readFileSync('manifest.json','utf8'));
+const pkg=JSON.parse(readFileSync('package.json','utf8'));
+assert.equal(manifest.version,pkg.version);
+assert.equal(manifest.manifest_version,3);
+assert.deepEqual(manifest.host_permissions,['https://api.deepseek.com/*']);
+for(const file of [manifest.background.service_worker,manifest.action.default_popup,'offscreen.html','README.md','README.zh-CN.md','LICENSE','PRIVACY.md','docs/preview.png']) assert.ok(existsSync(file),`Missing ${file}`);
+for(const file of readdirSync('.').filter(f=>f.endsWith('.js'))) execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
+console.log('Manifest, release version, documentation, and JavaScript syntax checks passed.');

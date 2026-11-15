@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "DeepSeek 双语字幕",
+  "version": "1.0.0",
+  "description": "为当前标签页生成原文与中文字幕，语音识别和翻译均使用你的 DeepSeek API。",
+  "minimum_chrome_version": "124",
+  "permissions": ["activeTab", "scripting", "tabCapture", "offscreen", "storage"],
+  "host_permissions": ["https://api.deepseek.com/*"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {"default_popup": "popup.html", "default_title": "DeepSeek 双语字幕"},
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'self'; connect-src https://api.deepseek.com"}
+}

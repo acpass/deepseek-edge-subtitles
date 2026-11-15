@@ -1,0 +1,16 @@
+{
+  "name": "deepseek-edge-subtitles",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Original-language and Simplified Chinese captions for Edge tabs, powered by DeepSeek ASR and translation.",
+  "license": "MIT",
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/extension.test.mjs",
+    "test:browser": "node tests/browser-smoke.cjs",
+    "package": "python scripts/package.py"
+  },
+  "engines": {"node": ">=22"},
+  "devDependencies": {"playwright": "1.65.1"}
+}
