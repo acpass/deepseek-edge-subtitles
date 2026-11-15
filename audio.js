@@ -12,12 +12,24 @@ export function encodeWav(samples, sampleRate) {
   return buffer;
 }
 
-// Split on a pause where possible; cap each segment so continuous speech keeps moving.
+// Refresh a growing utterance without cutting it at every display interval.
+// A real pause finalizes it; very long speech rolls over with shared audio.
 export class Segmenter {
   constructor(rate, seconds, emit) {
-    this.rate = rate; this.max = Math.round(rate * seconds); this.emit = emit; this.reset();
+    this.rate = rate; this.interval = Math.round(rate * seconds); this.max = rate * 18;
+    this.emit = emit; this.utterance = 0; this.overlap = Math.round(rate * 1.2); this.reset();
   }
-  reset() { this.buffer = new Float32Array(this.max + 4096); this.size = 0; this.quiet = 0; this.voiced = 0; }
+  reset(tail = null) {
+    this.buffer = new Float32Array(this.max + 4096); this.size = tail?.length || 0;
+    if (tail) this.buffer.set(tail);
+    this.quiet = 0; this.voiced = 0; this.active = !!tail; this.continued = !!tail;
+    this.revision = 0; this.lastEmission = this.size; this.newVoice = 0;
+  }
+  snapshot(final, reason) {
+    const samples = this.buffer.slice(0, this.size);
+    this.emit(samples, {utterance:this.utterance,revision:++this.revision,final,reason,continued:this.continued});
+    this.lastEmission = this.size; this.newVoice = 0;
+  }
   push(channels) {
     if (!channels.length || !channels[0].length) return;
     const n = channels[0].length;
@@ -26,11 +38,28 @@ export class Segmenter {
       let v = 0; for (const channel of channels) v += channel[i] || 0;
       v /= channels.length; this.buffer[this.size + i] = v; energy += v * v;
     }
+    const speaking = Math.sqrt(energy / n) > 0.003;
     this.size += n;
-    if (Math.sqrt(energy / n) > 0.003) { this.voiced += n; this.quiet = 0; } else this.quiet += n;
-    if (this.size >= this.max || (this.size >= this.rate && this.quiet >= this.rate * 0.5)) {
-      if (this.voiced >= this.rate * 0.12) this.emit(this.buffer.slice(0, this.size));
-      this.reset();
+    if (!this.active) {
+      if (speaking) { this.active = true; this.utterance++; }
+      else {
+        // Keep a short lead-in so speech onset is not clipped, without recording long silence.
+        const keep = Math.min(this.size, Math.round(this.rate * 0.2));
+        this.buffer.copyWithin(0,this.size-keep,this.size); this.size = keep; return;
+      }
+    }
+    if (speaking) { this.voiced += n; this.newVoice += n; this.quiet = 0; } else this.quiet += n;
+    if (this.quiet >= this.rate * 0.7) {
+      if (this.voiced >= this.rate * 0.12) this.snapshot(true,'pause');
+      this.reset(); return;
+    }
+    if (this.size >= this.max) {
+      if (this.voiced >= this.rate * 0.12) this.snapshot(true,'limit');
+      const tail = this.buffer.slice(this.size-this.overlap,this.size);
+      this.utterance++; this.reset(tail); return;
+    }
+    if (this.size-this.lastEmission >= this.interval && this.newVoice >= this.rate * 0.12) {
+      this.snapshot(false,'refresh');
     }
   }
 }

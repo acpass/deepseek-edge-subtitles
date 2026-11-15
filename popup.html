@@ -7,12 +7,12 @@
     <label for="apiKey">DeepSeek API Key</label>
     <input id="apiKey" type="password" autocomplete="off" placeholder="粘贴你的 API Key" spellcheck="false">
     <label class="check"><input id="remember" type="checkbox">在这台电脑记住 Key</label>
-    <div class="row"><div><label for="model">翻译模型</label><input id="model" type="text" value="deepseek-flash" spellcheck="false"></div><div><label for="seconds">分段长度</label><select id="seconds"><option value="3">3 秒 · 更快</option><option value="4" selected>4 秒 · 均衡</option><option value="6">6 秒 · 更连贯</option></select></div></div>
+    <div class="row"><div><label for="model">翻译模型</label><input id="model" type="text" value="deepseek-flash" spellcheck="false"></div><div><label for="seconds">刷新间隔</label><select id="seconds"><option value="3">3 秒 · 更新更快</option><option value="4" selected>4 秒 · 均衡</option><option value="6">6 秒 · 请求更少</option></select></div></div>
     <label for="fontSize">默认字幕字号 <span id="sizeValue">24</span></label><input id="fontSize" type="range" min="16" max="40" step="2" value="24">
     <div class="buttons"><button id="save" class="secondary">保存设置</button><button id="start" class="primary">开启当前页字幕</button></div>
     <button id="stop" class="stop" hidden>停止字幕</button>
     <p id="message" role="status"></p>
     <div class="note">原文识别与中文翻译均使用 DeepSeek。只处理你开启的标签页音频，不使用麦克风。音频与转写文字将发送至 DeepSeek，并按你的账户计费。</div>
-    <footer>字幕延迟包含分段、识别和翻译时间。<br>未勾选“记住”时，Key 仅保留至浏览器会话结束。</footer>
+    <footer>同一句持续累积，字幕随下文修订，停顿后定稿。<br>重复识别当前句会增加 ASR 用量。<br>未勾选“记住”时，Key 仅保留至浏览器会话结束。</footer>
   </main><script type="module" src="popup.js"></script>
 </body></html>

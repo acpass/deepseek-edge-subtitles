@@ -3,6 +3,7 @@ const path=require('node:path');
 const fs=require('node:fs/promises');
 const http=require('node:http');
 const os=require('node:os');
+const assert=require('node:assert/strict');
 (async()=>{
   const extension=path.resolve(__dirname,'..');
   const profile=await fs.mkdtemp(path.join(os.tmpdir(),'deepseek-subtitles-test-'));
@@ -42,17 +43,21 @@ const os=require('node:os');
       globalThis.requests=[];
       navigator.mediaDevices.getUserMedia=async()=>{
         const audio=new AudioContext({sampleRate:48000});const oscillator=audio.createOscillator();const dest=audio.createMediaStreamDestination();
-        oscillator.frequency.value=440;oscillator.connect(dest);oscillator.start();await audio.resume();
-        globalThis.syntheticAudio=audio;return dest.stream;
+        const gain=audio.createGain();
+        oscillator.frequency.value=440;oscillator.connect(gain);gain.connect(dest);oscillator.start();await audio.resume();
+        globalThis.syntheticGain=gain;globalThis.syntheticAudio=audio;return dest.stream;
       };
       globalThis.fetch=async(url,init)=>{
         globalThis.requests.push({url,body:typeof init.body==='string'?JSON.parse(init.body):null});
         if(url.endsWith('/tools/asr')) {
           const file=init.body.get('file');const bytes=await file.arrayBuffer();const view=new DataView(bytes);
           if(view.getUint16(22,true)!==1||view.getUint16(34,true)!==16||view.getUint32(24,true)!==48000) throw Error('Invalid audio upload');
-          return new Response(JSON.stringify({text:'A small step today can make a big difference tomorrow.'}),{headers:{'Content-Type':'application/json'}});
+          globalThis.requests.at(-1).audioBytes=bytes.byteLength;
+          const text=bytes.byteLength<48000*2*5 ? 'A small step today' : 'A small step today can make a big difference tomorrow.';
+          return new Response(JSON.stringify({text}),{headers:{'Content-Type':'application/json'}});
         }
-        return new Response(JSON.stringify({choices:[{message:{content:'今天迈出一小步，明天就可能大不相同。'}}]}),{headers:{'Content-Type':'application/json'}});
+        const current=JSON.parse(JSON.parse(init.body).messages[1].content).current;
+        return new Response(JSON.stringify({choices:[{message:{content:current==='A small step today'?'今天迈出一小步…':'今天迈出一小步，明天就可能大不相同。'}}]}),{headers:{'Content-Type':'application/json'}});
       };
     });
     await processor.goto(`chrome-extension://${id}/offscreen.html`);
@@ -62,14 +67,31 @@ const os=require('node:os');
       const result=await chrome.runtime.sendMessage({target:'offscreen',type:'start',id:capture.id,streamId:'synthetic',settings:{seconds:3,apiKey:'TEST_KEY',model:'deepseek-flash'}});
       if(!result.ok)throw Error(result.error);
     },capture);
-    await processor.waitForFunction(()=>globalThis.requests.some(x=>x.url.endsWith('/chat/completions')),{},{timeout:12000});
+    await processor.waitForFunction(()=>globalThis.requests.filter(x=>x.url.endsWith('/chat/completions')).length>=2,{},{timeout:15000});
+    await processor.evaluate(()=>syntheticGain.gain.value=0);
+    await processor.waitForFunction(()=>globalThis.requests.filter(x=>x.url.endsWith('/chat/completions')).some(x=>!JSON.parse(x.body.messages[1].content).provisional),{},{timeout:5000});
+    // Background forwarding is asynchronous; wait for the final pair, not just fetch invocation.
+    const deadline=Date.now()+5000;
+    while(!await worker.evaluate(()=>globalThis.observed.some(m=>m.type==='status'&&m.text.startsWith('停顿定稿')))) {
+      if(Date.now()>deadline)throw Error('Sentence finalization was not forwarded');
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
     const messages=await worker.evaluate(()=>globalThis.observed);
+    const revisions=messages.filter(m=>m.type==='caption');
+    assert.ok(revisions.length>=3);
+    assert.ok(revisions.every(m=>m.seq===1),'Growing phrase must revise the same caption');
+    assert.equal(revisions[0].original,'A small step today');
+    assert.equal(revisions.at(-1).original,'A small step today can make a big difference tomorrow.');
+    const requests=await processor.evaluate(()=>globalThis.requests);
+    const uploads=requests.filter(x=>x.audioBytes);
+    assert.ok(uploads[1].audioBytes>uploads[0].audioBytes*1.9,'Second request must contain the first request audio too');
+    assert.ok(requests.filter(x=>x.body).every(x=>JSON.parse(x.body.messages[1].content).previous.length===0),'A phrase must not become its own previous context');
     const caption=messages.find(m=>m.type==='caption'&&m.translated==='今天迈出一小步，明天就可能大不相同。');
     if(!caption)throw Error('Translated caption missing');
     await worker.evaluate(()=>chrome.runtime.sendMessage({target:'offscreen',type:'stop'}));
     if(!await processor.evaluate(()=>syntheticAudio.state==='running'))throw Error('Synthetic fixture unexpectedly stopped');
     await processor.evaluate(()=>syntheticAudio.close());
-    console.log('Real AudioWorklet → PCM WAV → mocked ASR → mocked translation passed.');
+    console.log('Growing AudioWorklet snapshots revise one caption, preserve full sentence audio, and finalize at a pause.');
     const server=http.createServer((req,res)=>{res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><html><body style="margin:0;background:#163833;color:#fff;font-family:system-ui"><main style="padding:100px"><p style="letter-spacing:3px;color:#8dc5ae">BILINGUAL CAPTIONS / 双语字幕</p><h1 style="font-size:52px">让每一句，都听得懂。</h1><p style="color:#a3bcaf">字幕界面示例 · 使用模拟识别结果</p></main></body></html>');});
     await new Promise(r=>server.listen(0,'127.0.0.1',r));
     try{

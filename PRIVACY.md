@@ -6,8 +6,8 @@ The extension captures audio only after you click its start button for a tab. It
 
 ### What leaves your device
 
-- Short mono WAV segments go to DeepSeek's ASR endpoint.
-- The resulting transcript and up to two previous source-text segments go to DeepSeek's chat endpoint for translation.
+- Growing mono WAV snapshots (up to 18 seconds each) go to DeepSeek's ASR endpoint. Revisions re-upload earlier audio from the same utterance; long-window rollovers include 1.2 seconds of shared audio. This increases ASR usage compared with non-overlapping chunks.
+- The resulting transcript and up to four preceding original/translated pairs go to DeepSeek's chat endpoint for translation. Each prior original and translation is capped at 1,200 characters.
 - Your DeepSeek API key is sent in the Authorization header of these requests.
 
 DeepSeek's own terms and data practices govern data received by DeepSeek. This project cannot promise or control provider-side deletion, retention, or billing.
@@ -40,8 +40,8 @@ The extension does not request blanket access to all websites. Screenshots and i
 
 ### 发送到外部的数据
 
-- 短 WAV 音频片段发送至 DeepSeek ASR。
-- 识别文字及最多两段先前原文发送至 DeepSeek 聊天接口，用于翻译。
+- 持续累积的 WAV 音频（每次最长约 18 秒）发送至 DeepSeek ASR。修订时会再次上传当前话语的先前音频；长话语换窗包含 1.2 秒重叠音频，因此比不重叠分段增加 ASR 用量。
+- 当前转写及最多四段前文原文和译文发送至 DeepSeek 聊天接口。每项先前原文或译文最多保留 1,200 字符。
 - DeepSeek API Key 通过这些请求的 Authorization 请求头发送。
 
 DeepSeek 收到的数据适用其自身条款与数据政策；本项目无法控制或承诺服务商的数据保留、删除和计费行为。

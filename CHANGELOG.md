@@ -1,5 +1,27 @@
 # Changelog / 更新记录
 
+## 1.1.0 — 2026-11-15
+
+### English
+
+- Fix abrupt 3/4/6-second cuts: the setting now controls refresh frequency, while each snapshot keeps the full growing utterance. A roughly 700 ms pause finalizes it.
+- Re-translate the entire current utterance when later words arrive, using up to four prior original/translated pairs. Update the two subtitle lines together.
+- Limit very long utterances to 18-second windows, retaining 1.2 seconds of audio across rollovers with best-effort text deduplication.
+- Coalesce pending revisions of the same utterance and reset context when queued utterances are skipped.
+- Add regression coverage for cumulative audio, revision identity, pause finalization, rollover, queue coalescing, and bilingual context. Twelve unit tests and Edge browser smoke checks pass with mocked API responses.
+
+Repeated recognition increases uploaded audio and ASR charges. There is still no semantic sentence-boundary guarantee, and live DeepSeek translation quality has not been benchmarked.
+
+### 简体中文
+
+- 修复到 3/4/6 秒就强行切句的问题：设置改为刷新频率，当前话语音频持续累积，约 700 毫秒停顿后定稿。
+- 后文到达时重新翻译整段当前话语，并参考最多四段前文原文与译文；双语字幕同时更新。
+- 超长连续话语使用 18 秒窗口，换窗保留 1.2 秒音频重叠，并尽可能去除重复识别文字。
+- 同一句的待处理版本合并为最新版本；跳过积压话语时重置上下文。
+- 增加累积音频、字幕修订、停顿定稿、换窗、队列合并及双语上下文回归验证；12 项单元测试和 Edge 模拟浏览器检查通过。
+
+重复识别会增加上传音频及 ASR 计费量。仍不能保证语义上准确断句，尚未测评真实 DeepSeek 翻译质量。
+
 ## 1.0.0 — 2026-11-15
 
 ### English

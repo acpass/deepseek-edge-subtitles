@@ -7,7 +7,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 FILES = [
     'manifest.json', 'background.js', 'offscreen.html', 'offscreen.js',
-    'pcm-worklet.js', 'audio.js', 'api.js', 'content.js',
+    'pcm-worklet.js', 'audio.js', 'api.js', 'content.js', 'transcript.js',
     'popup.html', 'popup.css', 'popup.js', 'LICENSE',
     'README.md', 'README.zh-CN.md', 'PRIVACY.md', 'CONTRIBUTING.md',
     'CHANGELOG.md', '使用说明.txt', 'docs/preview.png',
